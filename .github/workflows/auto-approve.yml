@@ -1,0 +1,42 @@
+name: Auto Approve Trusted PRs
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Check if PR author is trusted
+      id: check
+      run: |
+        AUTHOR="${{ github.event.pull_request.user.login }}"
+        echo "PR Author: $AUTHOR"
+
+        TRUSTED=$(cat allowed_users.json | grep -o "\"$AUTHOR\"" || true)
+
+        if [[ -n "$TRUSTED" ]]; then
+          echo "trusted=true" >> $GITHUB_OUTPUT
+        else
+          echo "trusted=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Auto-approve PR
+      if: steps.check.outputs.trusted == 'true'
+      run: gh pr review --approve --repo somerandomscripts/WF-social-data ${{ github.event.pull_request.number }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Label PR as autotrusted
+      if: steps.check.outputs.trusted == 'true'
+      run: gh pr edit ${{ github.event.pull_request.number }} --add-label autotrusted
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
