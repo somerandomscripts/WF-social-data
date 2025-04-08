@@ -33,10 +33,10 @@ jobs:
       if: steps.check.outputs.trusted == 'true'
       run: gh pr review --approve --repo somerandomscripts/WF-social-data ${{ github.event.pull_request.number }}
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Label PR as autotrusted
       if: steps.check.outputs.trusted == 'true'
       run: gh pr edit ${{ github.event.pull_request.number }} --add-label autotrusted
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
