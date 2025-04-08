@@ -1,35 +1,15 @@
-netlifyIdentity.on('init', user => {
-	updateUser(user);
-});
-
-netlifyIdentity.on('login', user => {
-	updateUser(user);
-	netlifyIdentity.close();
-});
-
-function updateUser(user) {
-	const status = document.getElementById('userStatus');
-	if (user) {
-		status.innerText = `Logged in as: ${user.user_metadata.full_name}`;
-	} else {
-		status.innerText = 'Not logged in';
-	}
-}
-
 document.getElementById('socialForm').onsubmit = async (e) => {
 	e.preventDefault();
-
-	const user = netlifyIdentity.currentUser();
-	if (!user) return alert("Login with GitHub first.");
 
 	const captcha = hcaptcha.getResponse();
 	if (!captcha) return alert("Complete captcha first");
 
+	const user = netlifyIdentity.currentUser();
 	const name = document.getElementById('name').value.trim().replace(/\s+/g, '_');
 
 	const payload = {
-		user: user.user_metadata,
-		token: user.token.access_token,
+		user: user ? user.user_metadata : null,
+		token: user ? user.token.access_token : null,
 		captcha,
 		data: {
 			[name]: [
