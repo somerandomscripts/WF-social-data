@@ -19,7 +19,7 @@ exports.handler = async function(event) {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+			'Authorization': `Bearer ${process.env.GH_TOKEN}`,
 			'User-Agent': 'wf-submission-bot'
 		},
 		body: JSON.stringify({
