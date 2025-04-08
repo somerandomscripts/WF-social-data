@@ -1,0 +1,48 @@
+name: Auto PR Handler
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Extract JSON and create PR branch
+      run: |
+        ISSUE_NUMBER="${{ github.event.issue.number }}"
+        BODY=$(echo '${{ github.event.issue.body }}')
+        
+        # Extract JSON block
+        JSON=$(echo "$BODY" | awk '/```json/,/```/' | sed '1d;$d')
+        
+        # Get name key
+        NAME=$(echo "$JSON" | grep -oP '"\K[^"]+(?=":)' | head -n 1)
+        FILE="db/${NAME}.json"
+
+        echo "$JSON" > "$FILE"
+
+        git config user.name "GitHub Action"
+        git config user.email "actions@github.com"
+
+        git checkout -b "auto/${NAME}"
+
+        git add "$FILE"
+        git commit -m "Auto update for $NAME"
+        git push origin "auto/${NAME}"
+
+        gh pr create \
+          --head "auto/${NAME}" \
+          --base main \
+          --title "Auto update for $NAME" \
+          --body "Auto-created PR for $NAME"
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
