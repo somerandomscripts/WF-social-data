@@ -1,10 +1,16 @@
 document.getElementById('socialForm').onsubmit = async (e) => {
 	e.preventDefault();
 
+	netlifyIdentity.ready.then(() => {
+		const user = netlifyIdentity.currentUser();
+		submitForm(user);
+	});
+};
+
+function submitForm(user) {
 	const captcha = hcaptcha.getResponse();
 	if (!captcha) return alert("Complete captcha first");
 
-	const user = netlifyIdentity.currentUser();
 	const name = document.getElementById('name').value.trim().replace(/\s+/g, '_');
 
 	const payload = {
@@ -22,16 +28,16 @@ document.getElementById('socialForm').onsubmit = async (e) => {
 		}
 	};
 
-	const res = await fetch('/.netlify/functions/createIssue', {
+	fetch('/.netlify/functions/createIssue', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(payload)
+	}).then(res => {
+		if (res.ok) {
+			alert("Submitted!");
+			hcaptcha.reset();
+		} else {
+			alert("Submission failed.");
+		}
 	});
-
-	if (res.ok) {
-		alert("Submitted!");
-		hcaptcha.reset();
-	} else {
-		alert("Submission failed.");
-	}
-};
+}
