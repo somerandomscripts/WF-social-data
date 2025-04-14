@@ -23,7 +23,7 @@ exports.handler = async function(event) {
   }
 
   // Fetch approved URLs and allowed users from GitHub
-  const approvedUrlsUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/approved_URLs.json';
+  const approvedUrlsUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_URLs.json';
   const allowedUsersUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_users.json';
 
   let approvedUrls = [];
