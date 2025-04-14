@@ -2,14 +2,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const socialForm = document.getElementById('socialForm');
     const inputs = document.querySelectorAll('input[type="text"]');  // Get all text inputs
 
-    // Define the allowed domain rule for the name field at the top
-    let name_URLs = [];  // Initialize name_URLs as an empty array for now
+    // Initialize allowed_URLs and name_URLs as empty arrays
+    let allowed_URLs = [];  
+    let name_URLs = [];  
 
-    // Fetch allowed URLs from GitHub (name_URLs.json)
-    const nameUrlsUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/name_URLs.json';
+    // Fetch allowed URLs from GitHub (allowed_URLs.json)
+    const allowed_URLs_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_URLs.json';
+    // Fetch name URLs from GitHub (name_URLs.json)
+    const name_URLs_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/name_URLs.json';
 
-    // Fetch the allowed URLs from the GitHub file for the name field
-    fetch(nameUrlsUrl)
+    // Fetch the allowed URLs (domains) from allowed_URLs.json
+    fetch(allowed_URLs_url)
+        .then(response => response.json())
+        .then(data => {
+            allowed_URLs = data;  // Populate allowed_URLs with the data from the file
+        })
+        .catch(error => {
+            console.error('Error fetching allowed URLs:', error);
+            alert('Failed to load allowed URLs.');
+        });
+
+    // Fetch the name URLs from name_URLs.json
+    fetch(name_URLs_url)
         .then(response => response.json())
         .then(data => {
             name_URLs = data;  // Populate name_URLs with the data from the file
@@ -114,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to check if URL is valid using the allowed_URLs
     function isValidUrl(url) {
         const domain = new URL(url).hostname;
-        return name_URLs.some(allowedDomain => domain.includes(allowedDomain));
+        return allowed_URLs.some(allowedDomain => domain.includes(allowedDomain));
     }
 
     // Function to show error message
