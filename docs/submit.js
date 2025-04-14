@@ -1,8 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const socialForm = document.getElementById('socialForm');
-    const inputs = document.querySelectorAll('input[type="text"]');  // Get all text inputs
+    const inputs = document.querySelectorAll('input[type="text"], textarea');  // Get all text inputs and textareas
 
-    // Initialize allowed_URLs and name_URLs as empty arrays
     let allowed_URLs = [];  
     let name_URLs = [];  
 
@@ -80,6 +79,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
+        // Check for duplicate URLs
+        const duplicateGroups = checkForDuplicates(inputs);
+        if (duplicateGroups.length > 0) {
+            duplicateGroups.forEach((group, index) => {
+                group.forEach(input => {
+                    showError(input, `Duplicated URL ${index + 1}`);
+                });
+            });
+        }
+
         // If any issues are found, prevent form submission
         if (issuesFound.length > 0) {
             alert("Please fix the following issues:\n\n" + issuesFound.join("\n"));
@@ -148,5 +157,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (errorMessage && errorMessage.classList.contains('error-message')) {
             errorMessage.textContent = '';  // Clear error message
         }
+    }
+
+    // Function to check for duplicate URLs
+    function checkForDuplicates(inputs) {
+        const urlMap = {};
+        const duplicateGroups = [];
+
+        inputs.forEach(input => {
+            const url = input.value.trim();
+            if (url) {
+                if (!urlMap[url]) {
+                    urlMap[url] = [];
+                }
+                urlMap[url].push(input);
+            }
+        });
+
+        // Group duplicates together
+        for (let url in urlMap) {
+            if (urlMap[url].length > 1) {
+                duplicateGroups.push(urlMap[url]);
+            }
+        }
+
+        return duplicateGroups;
     }
 });
