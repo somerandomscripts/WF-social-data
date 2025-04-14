@@ -1,0 +1,40 @@
+name: Handle Issue Comments
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  handle-comment:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Verify Allowed User and Trigger PR creation if "approved"
+      run: |
+        # Variables
+        COMMENT_BODY="${{ github.event.comment.body }}"
+        COMMENT_AUTHOR="${{ github.event.comment.user.login }}"
+        ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+        # Fetch allowed users from the allowed_users.json file in the repo
+        ALLOWED_USERS=$(cat allowed_users.json)
+
+        # Check if the comment contains "approved" and the author is in the allowed users list
+        if [[ "$COMMENT_BODY" == "approved" ]] && echo "$ALLOWED_USERS" | grep -qw "$COMMENT_AUTHOR"; then
+          echo "Comment approved by allowed user: $COMMENT_AUTHOR. Starting PR creation process..."
+
+          # Add the "approved" label (you can modify this if needed)
+          gh api --method POST \
+            /repos/${{ github.repository }}/issues/$ISSUE_NUMBER/labels \
+            -f labels='approved'
+
+          # Trigger the PR creation process
+          # You could trigger the PR creation process here by running the necessary GitHub API calls
+        else
+          echo "The user $COMMENT_AUTHOR is not allowed, or comment was not 'approved'."
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
