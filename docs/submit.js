@@ -6,12 +6,12 @@ document.addEventListener('DOMContentLoaded', function () {
     let name_URLs = [];
 
     // Fetch allowed URLs from GitHub (allowed_URLs.json)
-    const allowed_URLs_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_URLs.json';
+    const allowed_URLS_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_URLs.json';
     // Fetch name URLs from GitHub (name_URLs.json)
-    const name_URLs_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/name_URLs.json';
+    const name_URLS_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/name_URLs.json';
 
     // Fetch the allowed URLs (domains) from allowed_URLs.json
-    fetch(allowed_URLs_url)
+    fetch(allowed_URLS_url)
         .then(response => response.json())
         .then(data => {
             allowed_URLs = data;  // Populate allowed_URLs with the data from the file
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
     // Fetch the name URLs from name_URLs.json
-    fetch(name_URLs_url)
+    fetch(name_URLS_url)
         .then(response => response.json())
         .then(data => {
             name_URLs = data;  // Populate name_URLs with the data from the file
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Add event listeners for real-time validation
     inputs.forEach(input => {
         input.addEventListener('blur', function () {
-            validateUrl(input);
+            updateErrors(input);  // Update errors when switching between textboxes
         });
     });
 
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (duplicateGroups.length > 0) {
             duplicateGroups.forEach((group, index) => {
                 group.forEach(input => {
-                    showError(input, `Duplicated URL ${index + 1}`, "duplicated");
+                    showError(input, `Duplicate set ${index + 1}`, "duplicated");
                 });
             });
         }
@@ -187,5 +187,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         return duplicateGroups;
+    }
+
+    // Update errors dynamically when switching between fields
+    function updateErrors(input) {
+        hideError(input);  // First hide any existing error messages
+        validateUrl(input);  // Re-validate the current input field
     }
 });
