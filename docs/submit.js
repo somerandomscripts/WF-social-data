@@ -1,10 +1,15 @@
 document.getElementById('socialForm').onsubmit = async function (e) {
     e.preventDefault();
 
-    // Fetch the approved URLs from GitHub
+    // Fetch the approved URLs and allowed users from GitHub
     const approvedUrlsUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/approved_URLs.json';
-    const response = await fetch(approvedUrlsUrl);
-    const approvedUrls = await response.json();
+    const allowedUsersUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_users.json';
+
+    const responseUrls = await fetch(approvedUrlsUrl);
+    const approvedUrls = await responseUrls.json();
+
+    const responseUsers = await fetch(allowedUsersUrl);
+    const allowedUsers = await responseUsers.json();
 
     let validUrls = [];
     let invalidUrls = [];
