@@ -1,8 +1,10 @@
 document.getElementById('socialForm').onsubmit = async function (e) {
     e.preventDefault();
 
-    // Your approved URLs list (this could also be fetched from a server if needed)
-    const approvedDomains = ['facebook.com', 'instagram.com']; 
+    // Fetch the approved URLs from GitHub
+    const approvedUrlsUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/approved_URLs.json';
+    const response = await fetch(approvedUrlsUrl);
+    const approvedUrls = await response.json();
 
     let validUrls = [];
     let invalidUrls = [];
@@ -23,7 +25,7 @@ document.getElementById('socialForm').onsubmit = async function (e) {
         let normalizedUrl = link.startsWith('http') ? link : 'https://' + link; // Ensure valid URL format
 
         // Check if URL is valid and belongs to the allowed domains
-        if (isValidUrl(normalizedUrl, approvedDomains)) {
+        if (isValidUrl(normalizedUrl, approvedUrls)) {
             validUrls.push(normalizedUrl);
         } else {
             invalidUrls.push(normalizedUrl);
@@ -55,7 +57,7 @@ document.getElementById('socialForm').onsubmit = async function (e) {
     alert(result.message);
 };
 
-function isValidUrl(url, approvedDomains) {
+function isValidUrl(url, approvedUrls) {
     const domain = new URL(url).hostname;
-    return approvedDomains.some(approvedDomain => domain.includes(approvedDomain));
+    return approvedUrls.some(approvedDomain => domain.includes(approvedDomain));
 }
