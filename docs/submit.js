@@ -1,9 +1,9 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const socialForm = document.getElementById('socialForm');
     const inputs = document.querySelectorAll('input[type="text"], textarea');  // Get all text inputs and textareas
 
-    let allowed_URLs = [];  
-    let name_URLs = [];  
+    let allowed_URLs = [];
+    let name_URLs = [];
 
     // Fetch allowed URLs from GitHub (allowed_URLs.json)
     const allowed_URLs_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_URLs.json';
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add event listeners for real-time validation
     inputs.forEach(input => {
-        input.addEventListener('blur', function() {
+        input.addEventListener('blur', function () {
             validateUrl(input);
         });
     });
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const nameUrl = nameField.value.trim();
         if (nameUrl && !isValidNameUrl(nameUrl)) {
             issuesFound.push("The URL in the Name field must match one of the URLs in the name_URLs list.");
-            showError(nameField, "Invalid URL in Name field.");
+            showError(nameField, "Invalid URL in Name field.", "disallowed");
         } else {
             hideError(nameField);
             if (nameUrl) validUrls.push(nameUrl);  // If name URL is valid, add it
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         formData[input.id] = normalizedUrl;
                     } else {
                         issuesFound.push(`Invalid URL in ${input.placeholder}`);
-                        showError(input, "Disallowed or broken URL");
+                        showError(input, "Disallowed or broken URL", "broken");
                     }
                 } else {
                     hideError(input);  // Hide error if input is empty
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (duplicateGroups.length > 0) {
             duplicateGroups.forEach((group, index) => {
                 group.forEach(input => {
-                    showError(input, `Duplicated URL ${index + 1}`);
+                    showError(input, `Duplicated URL ${index + 1}`, "duplicated");
                 });
             });
         }
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = input.value.trim();
         if (input.id === 'name') {
             if (url && !isValidNameUrl(url)) {
-                showError(input, "Invalid URL in Name field.");
+                showError(input, "Invalid URL in Name field.", "disallowed");
             } else {
                 hideError(input);
             }
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isValidUrl(normalizedUrl)) {
                 hideError(input);
             } else {
-                showError(input, "Disallowed or broken URL");
+                showError(input, "Disallowed or broken URL", "broken");
             }
         } else {
             hideError(input);  // Hide error if input is empty
@@ -141,21 +141,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to show error message
-    function showError(input, message) {
-        let errorMessage = input.nextElementSibling;
-        if (!errorMessage || !errorMessage.classList.contains('error-message')) {
-            errorMessage = document.createElement('span');
-            errorMessage.classList.add('error-message');
-            input.parentNode.insertBefore(errorMessage, input.nextSibling);
+    function showError(input, message, errorType) {
+        let errorMessagesContainer = input.nextElementSibling;
+        if (!errorMessagesContainer || !errorMessagesContainer.classList.contains('error-messages-container')) {
+            errorMessagesContainer = document.createElement('div');
+            errorMessagesContainer.classList.add('error-messages-container');
+            input.parentNode.insertBefore(errorMessagesContainer, input.nextSibling);
         }
+
+        const errorMessage = document.createElement('span');
+        errorMessage.classList.add('error-message');
+        errorMessage.classList.add(errorType);  // Add the specific error type class (e.g., "duplicated", "broken", "disallowed")
         errorMessage.textContent = message;
+        errorMessagesContainer.appendChild(errorMessage);
     }
 
     // Function to hide error message
     function hideError(input) {
-        const errorMessage = input.nextElementSibling;
-        if (errorMessage && errorMessage.classList.contains('error-message')) {
-            errorMessage.textContent = '';  // Clear error message
+        const errorMessagesContainer = input.nextElementSibling;
+        if (errorMessagesContainer && errorMessagesContainer.classList.contains('error-messages-container')) {
+            errorMessagesContainer.innerHTML = '';  // Clear all error messages
         }
     }
 
