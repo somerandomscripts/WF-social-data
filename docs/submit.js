@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function () {
 			return;
 		}
 
-		// Gather valid data
 		let formData = {};
 		inputs.forEach(input => {
 			const val = input.value.trim();
@@ -62,10 +61,8 @@ document.addEventListener('DOMContentLoaded', function () {
 	};
 
 	function validateAllFields() {
-		// Clear all existing errors
 		inputs.forEach(input => hideError(input));
 
-		// Build map of normalized URLs
 		const urlMap = {};
 		inputs.forEach(input => {
 			const val = input.value.trim();
@@ -74,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			urlMap[input.id] = normalized;
 		});
 
-		// Track duplicate groups
+		// Duplicate check
 		const reverseMap = {};
 		Object.entries(urlMap).forEach(([id, url]) => {
 			if (!reverseMap[url]) reverseMap[url] = [];
@@ -92,25 +89,25 @@ document.addEventListener('DOMContentLoaded', function () {
 			}
 		});
 
-		// Validate disallowed/broken
+		// Invalid/broken check
 		inputs.forEach(input => {
 			const val = input.value.trim();
 			if (!val) return;
 			const url = val.startsWith('http') ? val : 'https://' + val;
 
 			try {
-				const domain = new URL(url).hostname;
+				const parsed = new URL(url);
+				const domain = parsed.hostname.toLowerCase();
+				const pathQueryHash = (parsed.pathname + parsed.search + parsed.hash).toLowerCase();
 
-				if (input.id === 'name') {
-					if (!name_URLs.some(base => url.includes(base))) {
-						showError(input, "Disallowed URL", "disallowed");
-					}
-				} else {
-					if (!allowed_URLs.some(base => domain.includes(base))) {
-						showError(input, "Disallowed or broken URL", "broken");
-					}
+				const allowList = input.id === 'name' ? name_URLs : allowed_URLs;
+				const isAllowed = allowList.some(allowed => domain.includes(allowed));
+
+				// Reject if domain not allowed or domain repeated in path
+				if (!isAllowed || pathQueryHash.includes(domain)) {
+					showError(input, "Disallowed or broken URL", "broken");
 				}
-			} catch (err) {
+			} catch {
 				showError(input, "Disallowed or broken URL", "broken");
 			}
 		});
@@ -124,9 +121,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			input.parentNode.insertBefore(container, input.nextSibling);
 		}
 
-		// Prevent duplicate messages
-		const existing = [...container.children].find(el => el.textContent === message);
-		if (existing) return;
+		// Only show message once
+		const exists = [...container.children].some(el => el.textContent === message);
+		if (exists) return;
 
 		const error = document.createElement('span');
 		error.classList.add('error-message', type);
