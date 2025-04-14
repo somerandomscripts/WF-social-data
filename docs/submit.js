@@ -99,13 +99,25 @@ document.addEventListener('DOMContentLoaded', function () {
 				const parsed = new URL(url);
 				const domain = parsed.hostname.toLowerCase();
 				const pathQueryHash = (parsed.pathname + parsed.search + parsed.hash).toLowerCase();
+				const fullURL = url.toLowerCase();
 
 				const allowList = input.id === 'name' ? name_URLs : allowed_URLs;
-				const isAllowed = allowList.some(allowed => domain.includes(allowed));
+				const matchedAllowed = allowList.find(allowed => domain.includes(allowed));
 
-				// Reject if domain not allowed or domain repeated in path
-				if (!isAllowed || pathQueryHash.includes(domain)) {
-					showError(input, "Disallowed or broken URL", "broken");
+				if (!matchedAllowed) {
+					showError(input, "Invalid or broken URL", "broken");
+					return;
+				}
+
+				// Check for any allowed domain (including the main one) appearing again in the path/query/hash
+				const foundExtra = allowList.some(allowed => {
+					return allowed !== matchedAllowed && fullURL.includes(allowed);
+				});
+
+				const domainRepeated = pathQueryHash.includes(domain);
+
+				if (foundExtra || domainRepeated) {
+					showError(input, "Invalid or broken URL", "broken");
 				}
 			} catch {
 				showError(input, "Disallowed or broken URL", "broken");
