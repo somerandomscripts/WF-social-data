@@ -7,30 +7,21 @@
 			margin-bottom: 16px;
 			position: relative;
 		}
-
 		.error-messages-container {
-			margin-top: 6px;
+			margin-top: 0px;
 		}
-
 		.error-message {
 			display: block;
 			font-size: 12px;
-			margin-bottom: 4px;
+			margin-bottom: 0px;
 			line-height: 1.4;
 		}
-
 		.error-message.duplicated {
 			color: red;
 		}
-
 		.error-message.broken {
 			color: orange;
 		}
-
-		.error-message.disallowed {
-			color: blue;
-		}
-
 	</style>
 	<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 	<script defer src="submit.js"></script>
@@ -41,7 +32,7 @@
 	<button onclick="netlifyIdentity.open()">Login with GitHub</button>
 	<p id="userStatus">Not logged in</p>
 
-	<form id="socialForm"><form id="socialForm">
+	<form id="socialForm">
 		<div class="form-field">
 			<input type="text" id="name" placeholder="Name" required>
 		</div>
@@ -62,9 +53,6 @@
 		</div>
 
 		<div class="h-captcha" data-sitekey="d364ebf6-9576-4b6c-bb5a-87ea86ec5528"></div><br>
-
-		<button type="submit">Submit</button>
-	</form>
 
 		<button type="submit">Submit</button>
 	</form>
