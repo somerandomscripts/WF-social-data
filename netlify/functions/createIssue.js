@@ -1,18 +1,15 @@
 const fetch = require('node-fetch');
-const fs = require('fs');
 
+// Function to normalize URL
 function normalizeUrl(url) {
   return url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
 }
 
+// Function to check if URL is valid (against approved list)
 function isValidUrl(url, approvedUrls) {
   const normalizedUrl = normalizeUrl(url);
   const domain = normalizedUrl.split('/')[0]; // Get the base domain
   return approvedUrls.includes(domain);
-}
-
-function isBadUrl(url) {
-  return /(https?:\/\/)?(www\.)?([\w\-]+\.[a-z]{2,})(\/[^\/]+){2,}/.test(url);  // Double domains check
 }
 
 exports.handler = async function(event) {
@@ -25,8 +22,25 @@ exports.handler = async function(event) {
     };
   }
 
-  // Load the approved URLs list
-  const approvedUrls = JSON.parse(fs.readFileSync('approved_URLs.json'));
+  // Fetch approved URLs and allowed users from GitHub
+  const approvedUrlsUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/approved_URLs.json';
+  const allowedUsersUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_users.json';
+
+  let approvedUrls = [];
+  let allowedUsers = [];
+
+  try {
+    const approvedUrlsResponse = await fetch(approvedUrlsUrl);
+    approvedUrls = await approvedUrlsResponse.json();
+
+    const allowedUsersResponse = await fetch(allowedUsersUrl);
+    allowedUsers = await allowedUsersResponse.json();
+  } catch (err) {
+    return {
+      statusCode: 500,
+      body: 'Failed to fetch URLs or users data from GitHub.'
+    };
+  }
 
   const validUrls = [];
   const invalidUrls = [];
