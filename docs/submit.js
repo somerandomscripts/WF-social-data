@@ -1,197 +1,143 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const socialForm = document.getElementById('socialForm');
-    const inputs = document.querySelectorAll('input[type="text"], textarea');  // Get all text inputs and textareas
+	const socialForm = document.getElementById('socialForm');
+	const inputs = document.querySelectorAll('input[type="text"], textarea');
 
-    let allowed_URLs = [];
-    let name_URLs = [];
+	let allowed_URLs = [];
+	let name_URLs = [];
 
-    // Fetch allowed URLs from GitHub (allowed_URLs.json)
-    const allowed_URLS_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_URLs.json';
-    // Fetch name URLs from GitHub (name_URLs.json)
-    const name_URLS_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/name_URLs.json';
+	const allowed_URLs_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_URLs.json';
+	const name_URLs_url = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/name_URLs.json';
 
-    // Fetch the allowed URLs (domains) from allowed_URLs.json
-    fetch(allowed_URLS_url)
-        .then(response => response.json())
-        .then(data => {
-            allowed_URLs = data;  // Populate allowed_URLs with the data from the file
-        })
-        .catch(error => {
-            console.error('Error fetching allowed URLs:', error);
-            alert('Failed to load allowed URLs.');
-        });
+	// Fetch allowed domains
+	fetch(allowed_URLs_url)
+		.then(res => res.json())
+		.then(data => allowed_URLs = data)
+		.catch(err => {
+			console.error("Failed to load allowed_URLs.json:", err);
+			alert("Could not load allowed URL list.");
+		});
 
-    // Fetch the name URLs from name_URLs.json
-    fetch(name_URLS_url)
-        .then(response => response.json())
-        .then(data => {
-            name_URLs = data;  // Populate name_URLs with the data from the file
-        })
-        .catch(error => {
-            console.error('Error fetching name URLs:', error);
-            alert('Failed to load name URLs.');
-        });
+	// Fetch name-specific URLs
+	fetch(name_URLs_url)
+		.then(res => res.json())
+		.then(data => name_URLs = data)
+		.catch(err => {
+			console.error("Failed to load name_URLs.json:", err);
+			alert("Could not load name URL list.");
+		});
 
-    // Add event listeners for real-time validation
-    inputs.forEach(input => {
-        input.addEventListener('blur', function () {
-            updateErrors(input);  // Update errors when switching between textboxes
-        });
-    });
+	// Re-validate entire form every time focus leaves any field
+	inputs.forEach(input => {
+		input.addEventListener('blur', () => {
+			validateAllFields();
+		});
+	});
 
-    // Validate all URLs when submitting the form
-    socialForm.onsubmit = async function (e) {
-        e.preventDefault();
+	socialForm.onsubmit = async function (e) {
+		e.preventDefault();
+		validateAllFields();
 
-        let validUrls = [];
-        let issuesFound = [];
-        let formData = {};
+		// Stop submission if any errors still exist
+		const hasErrors = document.querySelectorAll('.error-messages-container span').length > 0;
+		if (hasErrors) {
+			alert("Please fix the issues before submitting.");
+			return;
+		}
 
-        // Validate the 'name' field for the URLs in name_URLs.json
-        const nameField = document.getElementById('name');
-        const nameUrl = nameField.value.trim();
-        if (nameUrl && !isValidNameUrl(nameUrl)) {
-            issuesFound.push("The URL in the Name field must match one of the URLs in the name_URLs list.");
-            showError(nameField, "Invalid URL in Name field.", "disallowed");
-        } else {
-            hideError(nameField);
-            if (nameUrl) validUrls.push(nameUrl);  // If name URL is valid, add it
-            formData[nameField.id] = nameUrl;
-        }
+		// Gather valid data
+		let formData = {};
+		inputs.forEach(input => {
+			const val = input.value.trim();
+			if (val) formData[input.id] = val;
+		});
 
-        // Validate other fields
-        inputs.forEach(input => {
-            if (input.id !== 'name') {
-                const url = input.value.trim();
-                if (url) {
-                    let normalizedUrl = url.startsWith('http') ? url : 'https://' + url;  // Ensure valid URL format
-                    if (isValidUrl(normalizedUrl)) {
-                        // If URL is valid, add to form data
-                        validUrls.push(normalizedUrl);
-                        formData[input.id] = normalizedUrl;
-                    } else {
-                        issuesFound.push(`Invalid URL in ${input.placeholder}`);
-                        showError(input, "Disallowed or broken URL", "broken");
-                    }
-                } else {
-                    hideError(input);  // Hide error if input is empty
-                }
-            }
-        });
+		const res = await fetch('/.netlify/functions/createIssue', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(formData)
+		});
 
-        // Check for duplicate URLs
-        const duplicateGroups = checkForDuplicates(inputs);
-        if (duplicateGroups.length > 0) {
-            duplicateGroups.forEach((group, index) => {
-                group.forEach(input => {
-                    showError(input, `Duplicate set ${index + 1}`, "duplicated");
-                });
-            });
-        }
+		const result = await res.json();
+		alert(result.message);
+	};
 
-        // If any issues are found, prevent form submission
-        if (issuesFound.length > 0) {
-            alert("Please fix the following issues:\n\n" + issuesFound.join("\n"));
-            return;  // Prevent form submission if there are errors
-        }
+	function validateAllFields() {
+		// Clear all existing errors
+		inputs.forEach(input => hideError(input));
 
-        // Proceed with submitting the valid data
-        const response = await fetch('/.netlify/functions/createIssue', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        });
+		// Build map of normalized URLs
+		const urlMap = {};
+		inputs.forEach(input => {
+			const val = input.value.trim();
+			if (!val) return;
+			const normalized = val.startsWith('http') ? val : 'https://' + val;
+			urlMap[input.id] = normalized;
+		});
 
-        const result = await response.json();
-        alert(result.message);
-    };
+		// Track duplicate groups
+		const reverseMap = {};
+		Object.entries(urlMap).forEach(([id, url]) => {
+			if (!reverseMap[url]) reverseMap[url] = [];
+			reverseMap[url].push(id);
+		});
 
-    // Function to check if URL is valid for the name field (matching name_URLs list)
-    function isValidNameUrl(url) {
-        return name_URLs.some(validUrl => url.includes(validUrl));
-    }
+		let dupCount = 1;
+		Object.entries(reverseMap).forEach(([url, ids]) => {
+			if (ids.length > 1) {
+				ids.forEach(dupId => {
+					const field = document.getElementById(dupId);
+					showError(field, `Duplicate set ${dupCount}`, "duplicated");
+				});
+				dupCount++;
+			}
+		});
 
-    // Real-time URL validation function
-    function validateUrl(input) {
-        const url = input.value.trim();
-        if (input.id === 'name') {
-            if (url && !isValidNameUrl(url)) {
-                showError(input, "Invalid URL in Name field.", "disallowed");
-            } else {
-                hideError(input);
-            }
-        } else if (url) {
-            let normalizedUrl = url.startsWith('http') ? url : 'https://' + url;
-            if (isValidUrl(normalizedUrl)) {
-                hideError(input);
-            } else {
-                showError(input, "Disallowed or broken URL", "broken");
-            }
-        } else {
-            hideError(input);  // Hide error if input is empty
-        }
-    }
+		// Validate disallowed/broken
+		inputs.forEach(input => {
+			const val = input.value.trim();
+			if (!val) return;
+			const url = val.startsWith('http') ? val : 'https://' + val;
 
-    // Function to check if URL is valid using the allowed_URLs
-    function isValidUrl(url) {
-        const domain = new URL(url).hostname;
-        return allowed_URLs.some(allowedDomain => domain.includes(allowedDomain));
-    }
+			try {
+				const domain = new URL(url).hostname;
 
-    // Function to show error message
-    function showError(input, message, errorType) {
-        let errorMessagesContainer = input.nextElementSibling;
-        if (!errorMessagesContainer || !errorMessagesContainer.classList.contains('error-messages-container')) {
-            errorMessagesContainer = document.createElement('div');
-            errorMessagesContainer.classList.add('error-messages-container');
-            input.parentNode.insertBefore(errorMessagesContainer, input.nextSibling);
-        }
+				if (input.id === 'name') {
+					if (!name_URLs.some(base => url.includes(base))) {
+						showError(input, "Disallowed URL", "disallowed");
+					}
+				} else {
+					if (!allowed_URLs.some(base => domain.includes(base))) {
+						showError(input, "Disallowed or broken URL", "broken");
+					}
+				}
+			} catch (err) {
+				showError(input, "Disallowed or broken URL", "broken");
+			}
+		});
+	}
 
-        const errorMessage = document.createElement('span');
-        errorMessage.classList.add('error-message');
-        errorMessage.classList.add(errorType);  // Add the specific error type class (e.g., "duplicated", "broken", "disallowed")
-        errorMessage.textContent = message;
-        errorMessagesContainer.appendChild(errorMessage);
-    }
+	function showError(input, message, type) {
+		let container = input.nextElementSibling;
+		if (!container || !container.classList.contains('error-messages-container')) {
+			container = document.createElement('div');
+			container.classList.add('error-messages-container');
+			input.parentNode.insertBefore(container, input.nextSibling);
+		}
 
-    // Function to hide error message
-    function hideError(input) {
-        const errorMessagesContainer = input.nextElementSibling;
-        if (errorMessagesContainer && errorMessagesContainer.classList.contains('error-messages-container')) {
-            errorMessagesContainer.innerHTML = '';  // Clear all error messages
-        }
-    }
+		// Prevent duplicate messages
+		const existing = [...container.children].find(el => el.textContent === message);
+		if (existing) return;
 
-    // Function to check for duplicate URLs
-    function checkForDuplicates(inputs) {
-        const urlMap = {};
-        const duplicateGroups = [];
+		const error = document.createElement('span');
+		error.classList.add('error-message', type);
+		error.textContent = message;
+		container.appendChild(error);
+	}
 
-        inputs.forEach(input => {
-            const url = input.value.trim();
-            if (url) {
-                if (!urlMap[url]) {
-                    urlMap[url] = [];
-                }
-                urlMap[url].push(input);
-            }
-        });
-
-        // Group duplicates together
-        for (let url in urlMap) {
-            if (urlMap[url].length > 1) {
-                duplicateGroups.push(urlMap[url]);
-            }
-        }
-
-        return duplicateGroups;
-    }
-
-    // Update errors dynamically when switching between fields
-    function updateErrors(input) {
-        hideError(input);  // First hide any existing error messages
-        validateUrl(input);  // Re-validate the current input field
-    }
+	function hideError(input) {
+		const container = input.nextElementSibling;
+		if (container && container.classList.contains('error-messages-container')) {
+			container.remove();
+		}
+	}
 });
