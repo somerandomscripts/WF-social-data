@@ -3,21 +3,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const inputs = document.querySelectorAll('input[type="text"]');  // Get all text inputs
 
     // Define the allowed domain rule for the name field at the top
-    const nameFieldDomainPattern = 'wikifeet*.com';  // This is the pattern for the name field URL
-    let allowed_URLs = [];  // Initialize allowed_URLs as an empty array for now
+    let name_URLs = [];  // Initialize name_URLs as an empty array for now
 
-    // Fetch allowed URLs from GitHub (allowed_URLs.json)
-    const allowedUrlsUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/allowed_URLs.json';
+    // Fetch allowed URLs from GitHub (name_URLs.json)
+    const nameUrlsUrl = 'https://raw.githubusercontent.com/somerandomscripts/WF-social-data/refs/heads/main/rules/name_URLs.json';
 
-    // Fetch the allowed domains from the GitHub file
-    fetch(allowedUrlsUrl)
+    // Fetch the allowed URLs from the GitHub file for the name field
+    fetch(nameUrlsUrl)
         .then(response => response.json())
         .then(data => {
-            allowed_URLs = data;  // Populate allowed_URLs with the data from the file
+            name_URLs = data;  // Populate name_URLs with the data from the file
         })
         .catch(error => {
-            console.error('Error fetching allowed URLs:', error);
-            alert('Failed to load allowed URLs.');
+            console.error('Error fetching name URLs:', error);
+            alert('Failed to load name URLs.');
         });
 
     // Add event listeners for real-time validation
@@ -35,11 +34,11 @@ document.addEventListener('DOMContentLoaded', function() {
         let issuesFound = [];
         let formData = {};
 
-        // Validate the 'name' field for the wikifeet pattern
+        // Validate the 'name' field for the URLs in name_URLs.json
         const nameField = document.getElementById('name');
         const nameUrl = nameField.value.trim();
         if (nameUrl && !isValidNameUrl(nameUrl)) {
-            issuesFound.push("The URL in the Name field must match the pattern 'wikifeet*.com'.");
+            issuesFound.push("The URL in the Name field must match one of the URLs in the name_URLs list.");
             showError(nameField, "Invalid URL in Name field.");
         } else {
             hideError(nameField);
@@ -53,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const url = input.value.trim();
                 if (url) {
                     let normalizedUrl = url.startsWith('http') ? url : 'https://' + url;  // Ensure valid URL format
-                    if (isValidUrl(normalizedUrl, allowed_URLs)) {
+                    if (isValidUrl(normalizedUrl)) {
                         // If URL is valid, add to form data
                         validUrls.push(normalizedUrl);
                         formData[input.id] = normalizedUrl;
@@ -86,10 +85,9 @@ document.addEventListener('DOMContentLoaded', function() {
         alert(result.message);
     };
 
-    // Function to check if URL is valid for the name field (wikifeet*.com)
+    // Function to check if URL is valid for the name field (matching name_URLs list)
     function isValidNameUrl(url) {
-        const regex = /^https?:\/\/(?:www\.)?wikifeet.*\.com\/?$/i;
-        return regex.test(url);
+        return name_URLs.some(validUrl => url.includes(validUrl));
     }
 
     // Real-time URL validation function
@@ -103,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } else if (url) {
             let normalizedUrl = url.startsWith('http') ? url : 'https://' + url;
-            if (isValidUrl(normalizedUrl, allowed_URLs)) {
+            if (isValidUrl(normalizedUrl)) {
                 hideError(input);
             } else {
                 showError(input, "Disallowed or broken URL");
@@ -113,10 +111,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Function to check if URL is valid
-    function isValidUrl(url, allowed_URLs) {
+    // Function to check if URL is valid using the allowed_URLs
+    function isValidUrl(url) {
         const domain = new URL(url).hostname;
-        return allowed_URLs.some(allowedDomain => domain.includes(allowedDomain));
+        return name_URLs.some(allowedDomain => domain.includes(allowedDomain));
     }
 
     // Function to show error message
