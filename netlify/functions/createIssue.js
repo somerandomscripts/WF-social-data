@@ -1,52 +1,105 @@
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = require('node-fetch');
+const fs = require('fs');
 
-exports.handler = async function (event) {
-  const { data, user, token, captcha } = JSON.parse(event.body);
+function normalizeUrl(url) {
+  return url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+}
+
+function isValidUrl(url, approvedUrls) {
+  const normalizedUrl = normalizeUrl(url);
+  const domain = normalizedUrl.split('/')[0]; // Get the base domain
+  return approvedUrls.includes(domain);
+}
+
+function isBadUrl(url) {
+  return /(https?:\/\/)?(www\.)?([\w\-]+\.[a-z]{2,})(\/[^\/]+){2,}/.test(url);  // Double domains check
+}
+
+exports.handler = async function(event) {
+  const { data, captcha, user } = JSON.parse(event.body);
 
   if (!captcha || !data) {
     return {
       statusCode: 400,
-      body: 'Missing fields',
+      body: 'Missing fields'
     };
   }
 
-  const name = Object.keys(data)[0];
-  const issueTitle = `Social update: ${name}`;
-  const author = user ? `${user.full_name} (${user.email})` : 'Anonymous';
-  const issueBody = `Submitter: ${author}\n\n\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``;
+  // Load the approved URLs list
+  const approvedUrls = JSON.parse(fs.readFileSync('approved_URLs.json'));
 
-  // If user is logged in, use their token, otherwise use the Netlify environment variable token
-  const authToken = user ? user.token : process.env.GH_TOKEN;
+  const validUrls = [];
+  const invalidUrls = [];
+  const issuesFound = [];
 
-  if (!authToken) {
+  // Validate the URLs in the submitted data
+  Object.values(data).forEach(links => {
+    links.forEach(link => {
+      if (link && isBadUrl(link)) {
+        invalidUrls.push(link);
+        issuesFound.push("Double URL");
+      } else if (link && !isValidUrl(link, approvedUrls)) {
+        invalidUrls.push(link);
+        issuesFound.push("Disallowed URL");
+      } else if (link) {
+        validUrls.push(link);
+      }
+    });
+  });
+
+  // If there are issues, return error and show what was found
+  if (invalidUrls.length > 0) {
     return {
-      statusCode: 401,
-      body: 'Authentication failed: no GitHub token provided',
+      statusCode: 400,
+      body: `Invalid URLs detected: ${invalidUrls.join(', ')}`
     };
   }
 
-  // Create issue on GitHub
-  const response = await fetch('https://api.github.com/repos/somerandomscripts/WF-social-data/issues', {
+  // If no issues, display "none" for issuesFound
+  if (issuesFound.length === 0) {
+    issuesFound.push("none");
+  }
+
+  // Set the submitter's name (either anonymous or GitHub user)
+  const submitter = user ? user.login : "Anonymous";
+
+  // Construct the GitHub issue body
+  const issueData = {
+    title: `Social update: ${Object.keys(data)[0]}`,  // Using the first key (e.g., Angela_Kinsey)
+    body: `
+      Submitter: ${submitter}
+      
+      Issues:
+      ${issuesFound.join('\n')}
+      
+      \`\`\`json
+      ${JSON.stringify(data, null, 2)}
+      \`\`\`
+
+      ${validUrls.map(url => `[${url}](${url})`).join('\n')}
+    `,
+    labels: ["submission"]
+  };
+
+  // Create the GitHub issue
+  const res = await fetch('https://api.github.com/repos/yourrepo/issues', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authToken}`,
-      'User-Agent': 'wf-submission-bot',
+      'Authorization': `Bearer ${process.env.GH_TOKEN}`,
     },
-    body: JSON.stringify({
-      title: issueTitle,
-      body: issueBody,
-      labels: ['submission'],
-    }),
+    body: JSON.stringify(issueData),
   });
 
-  if (!response.ok) {
-    const text = await response.text();
-    return { statusCode: 500, body: `GitHub API failed: ${text}` };
+  if (!res.ok) {
+    return {
+      statusCode: 500,
+      body: 'GitHub API failed'
+    };
   }
 
   return {
     statusCode: 200,
-    body: 'Issue created successfully',
+    body: 'Issue created successfully'
   };
 };
